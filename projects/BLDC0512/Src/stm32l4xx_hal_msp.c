@@ -123,13 +123,14 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* hadc)
     PC2     ------> ADC1_IN3
     PA0     ------> ADC1_IN5
     PA1     ------> ADC1_IN6
+    PA4     ------> ADC1_IN9
     */
     GPIO_InitStruct.Pin = M1_CURR_AMPL_V_Pin|M1_TEMPERATURE_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = M1_CURR_AMPL_U_Pin|M1_BUS_VOLTAGE_Pin;
+    GPIO_InitStruct.Pin = M1_CURR_AMPL_U_Pin|M1_BUS_VOLTAGE_Pin|GPIO_PIN_4;
     GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -200,10 +201,11 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* hadc)
     PC2     ------> ADC1_IN3
     PA0     ------> ADC1_IN5
     PA1     ------> ADC1_IN6
+    PA4     ------> ADC1_IN9
     */
     HAL_GPIO_DeInit(GPIOC, M1_CURR_AMPL_V_Pin|M1_TEMPERATURE_Pin);
 
-    HAL_GPIO_DeInit(GPIOA, M1_CURR_AMPL_U_Pin|M1_BUS_VOLTAGE_Pin);
+    HAL_GPIO_DeInit(GPIOA, M1_CURR_AMPL_U_Pin|M1_BUS_VOLTAGE_Pin|GPIO_PIN_4);
 
     /* ADC1 interrupt DeInit */
     /* USER CODE BEGIN ADC1:ADC1_2_IRQn disable */

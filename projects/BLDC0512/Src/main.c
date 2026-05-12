@@ -59,8 +59,8 @@ DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
-RegConv_t potConv; // 可変抵抗読み取り用のRCM構造体
-volatile bool is_system_active = false; // ボタン(PC13)によるON/OFFフラグ
+volatile uint8_t system_state = 0; // 0: 0RPM(停止), 1: 1000RPM, 2: 2000RPM, 3: 3000RPM
+volatile uint32_t last_button_press_time = 0; // チャタリング防止用
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -120,12 +120,6 @@ int main(void)
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
-  // RCM (Regular Conversion Manager) に可変抵抗(PA4 = ADC1_IN9)を登録
-  potConv.regADC = ADC1;
-  potConv.channel = MC_ADC_CHANNEL_9;
-  potConv.samplingTime = LL_ADC_SAMPLINGTIME_92CYCLES_5; // 十分なサンプリング時間を確保
-  RCM_RegisterRegConv(&potConv);
-  
   // 初期状態としてモーターを停止状態で待機
   MC_StopMotor1();
   /* USER CODE END 2 */
@@ -137,68 +131,72 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /* BLDC0512 統合ロジック: 可変抵抗制御 + ON/OFFスイッチ + UARTステータス通信 */
+    /* BLDC0512 統合ロジック: ボタンスイッチ段階制御 + LED点滅 + UART出力 */
     
-    /* ユーザー定義変数初期化 */
-    static uint32_t adc_raw = 0;
-    static uint32_t adc_filtered = 0;
-    int16_t target_rpm = 0;
     static int16_t current_rpm_cmd = 0;
-    const int16_t MAX_RPM = 3000;
-    const int16_t MIN_RPM = 500;
-    const uint16_t RAMP_TIME_MS = 250; /* 250msのスムーズな推移 */
-    const int16_t RPM_DEADBAND = 40;   /* 40RPMの不感帯 */
-    const uint16_t ADC_STOP_THRESHOLD = 100; /* ADC停止閾値 */
+    static uint8_t led_counter = 0;
+    int16_t target_rpm = 0;
 
-    /* 1. ADC値のサンプリング (MCSDK標準のバックグラウンド読み取りAPIを使用) */
-    adc_raw = RCM_ExecRegularConv(&potConv);
-    
-    /* 2. デジタルローパスフィルタの適用 (ビットシフトによる高速化) */
-    adc_filtered = (adc_filtered * 7 + adc_raw) >> 3; 
+    // 状態に応じた目標RPMの決定
+    switch (system_state) {
+        case 1: target_rpm = 1000; break;
+        case 2: target_rpm = 2000; break;
+        case 3: target_rpm = 3000; break;
+        default: target_rpm = 0; break; // state 0
+    }
 
-    /* 3. モータ状態の監視と指令値の更新 */
+    /* 1. モータ状態の監視と指令値の更新 */
     MCI_State_t state = MC_GetSTMStateMotor1();
     
     if (state == FAULT_OVER || state == FAULT_NOW) {
         /* 異常時の安全処理 */
-        // エラー時は自動的に停止するため、内部コマンドをリセット
         current_rpm_cmd = 0;
+        system_state = 0; // エラー時は強制的にState 0に戻す
     } 
-    else if (!is_system_active || adc_filtered < ADC_STOP_THRESHOLD) {
-        /* システムがOFF、またはボリュームがゼロ付近の場合は停止 */
+    else if (system_state == 0) {
+        /* 停止状態 */
         if (state == RUN || state == START) {
             MC_StopMotor1();
             current_rpm_cmd = 0;
         }
     } 
     else {
-        /* システムON かつ ボリュームが有効な場合 */
-        /* RPMへのスケーリング (線形マッピング) */
-        target_rpm = ((adc_filtered * (MAX_RPM - MIN_RPM)) / 4095) + MIN_RPM;
-
+        /* 稼働状態 (State 1, 2, 3) */
         if (state == IDLE) {
             /* 停止状態から再起動 */
             MC_StartMotor1();
-            current_rpm_cmd = 0; // 再起動時に確実にランプを再発行するため
+            current_rpm_cmd = 0;
         } else if (state == RUN) {
-            /* 速度変化がデッドバンドを超えた場合のみAPIを発行 */
-            int16_t diff = target_rpm - current_rpm_cmd;
-            if (diff < 0) diff = -diff;
-
-            if (diff > RPM_DEADBAND || current_rpm_cmd == 0) {
-                MC_ProgramSpeedRampMotor1_F((float)target_rpm, RAMP_TIME_MS);
+            /* 目標RPMが変わった場合のみAPIを発行 (2000msかけて加速・減速) */
+            if (target_rpm != current_rpm_cmd || current_rpm_cmd == 0) {
+                MC_ProgramSpeedRampMotor1_F((float)target_rpm, 2000);
                 current_rpm_cmd = target_rpm;
             }
         }
     }
 
-    /* デバッグ用にUARTで現在の状態を出力 */
+    /* 2. LEDの点滅制御 (50msループを基準) */
+    led_counter++;
+    if (system_state == 0) {
+        // State 0: 消灯
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+    } else if (system_state == 1) {
+        // State 1: 1Hz点滅 (500ms ON / 500ms OFF) => 10カウント毎にトグル
+        if (led_counter % 10 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    } else if (system_state == 2) {
+        // State 2: 2Hz点滅 (250ms ON / 250ms OFF) => 5カウント毎にトグル
+        if (led_counter % 5 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    } else if (system_state == 3) {
+        // State 3: 5Hz点滅 (100ms ON / 100ms OFF) => 2カウント毎にトグル
+        if (led_counter % 2 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    }
+
+    /* 3. デバッグ用にUARTで現在の状態を出力 */
     char msg[64];
-    snprintf(msg, sizeof(msg), "[SYS: %s] ADC: %4lu | Target RPM: %4d\r\n", 
-             is_system_active ? "ON " : "OFF", adc_filtered, is_system_active ? current_rpm_cmd : 0);
+    snprintf(msg, sizeof(msg), "[State: %d] Target RPM: %4d\r\n", system_state, target_rpm);
     HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     
-    HAL_Delay(50); /* サンプリングレートの制御 */
+    HAL_Delay(50); /* サンプリングレートの制御 (50ms/loop) */
   }
   /* USER CODE END 3 */
 }
@@ -627,17 +625,18 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(Start_Stop_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-  // [REFACTOR] ホールセンサー入力ピンの初期化
+  // ホールセンサー入力ピンの初期化（UART/ADCとの衝突回避）
   // 代わりに空いているArduino互換ピン(D4, D5, D6)を使用します。
   GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_4 | GPIO_PIN_10;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  // X-NUCLEO-IHM08M1のCN6 (Potentiometer) が繋がるA2ピン(PA4)をADC入力として初期化
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
-  GPIO_InitStruct.Mode = GPIO_MODE_ANALOG_ADC_CONTROL;
+  // Nucleo上の緑色LED (LD2) が繋がるPA5を出力ピンとして初期化
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_2 */
 }
@@ -682,12 +681,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
   if (GPIO_Pin == Start_Stop_Pin) // PC13 (USER BUTTON)
   {
-    /* 
-     * システム全体の稼働フラグ (ON/OFF) を反転させます。
-     * 実際のモーターの起動・停止ロジックは、メインループ内でポテンショメータの値と
-     * 組み合わせて安全に処理されます。
-     */
-    is_system_active = !is_system_active;
+    /* 簡易的なチャタリング防止 (200ms以内は無視) */
+    uint32_t current_time = HAL_GetTick();
+    if (current_time - last_button_press_time > 200) {
+      // 状態を 0 -> 1 -> 2 -> 3 -> 0 と遷移させる
+      system_state++;
+      if (system_state > 3) {
+        system_state = 0;
+      }
+      last_button_press_time = current_time;
+    }
   }
 }
 

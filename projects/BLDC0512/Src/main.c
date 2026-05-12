@@ -59,8 +59,12 @@ DMA_HandleTypeDef hdma_usart2_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 
 /* USER CODE BEGIN PV */
-volatile uint8_t system_state = 0; // 0: 0RPM(停止), 1: 1000RPM, 2: 2000RPM, 3: 3000RPM
+volatile bool is_system_active = false; 
+volatile bool is_fault_state = false;
 volatile uint32_t last_button_press_time = 0; // チャタリング防止用
+
+/* ここで目標回転数を設定します（コンパイル時に変更可能） */
+#define DEFAULT_TARGET_RPM 1000 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -131,20 +135,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /* BLDC0512 統合ロジック: ボタンスイッチ段階制御 + LED点滅 + UART出力 */
+    /* BLDC0512 統合ロジック: ボタンスイッチON/OFF + 固定目標RPM + UART出力 */
     
     static int16_t current_rpm_cmd = 0;
     static uint8_t led_counter = 0;
-    int16_t target_rpm = 0;
-
-    // 状態に応じた目標RPMの決定
-    switch (system_state) {
-        case 1: target_rpm = 1000; break;
-        case 2: target_rpm = 2000; break;
-        case 3: target_rpm = 3000; break;
-        case 99: target_rpm = 0; break; // FAULT
-        default: target_rpm = 0; break; // state 0
-    }
+    int16_t target_rpm = is_system_active ? DEFAULT_TARGET_RPM : 0;
 
     /* 1. モータ状態の監視と指令値の更新 */
     MCI_State_t state = MC_GetSTMStateMotor1();
@@ -152,21 +147,22 @@ int main(void)
     if (state == FAULT_OVER || state == FAULT_NOW) {
         /* 異常時の安全処理 */
         current_rpm_cmd = 0;
-        system_state = 99; // FAULT状態へ遷移
+        is_system_active = false;
+        is_fault_state = true;
     } 
-    else if (system_state == 0) {
+    else if (!is_system_active) {
         /* 停止状態 */
         if (state == RUN || state == START) {
             MC_StopMotor1();
             current_rpm_cmd = 0;
         }
     } 
-    else if (system_state == 99) {
+    else if (is_fault_state) {
         /* エラー状態 (ボタンが押されてクリアされるのを待つ) */
         current_rpm_cmd = 0;
     }
     else {
-        /* 稼働状態 (State 1, 2, 3) */
+        /* 稼働状態 */
         if (state == IDLE) {
             /* 停止状態から再起動 */
             MC_StartMotor1();
@@ -182,26 +178,21 @@ int main(void)
 
     /* 2. LEDの点滅制御 (50msループを基準) */
     led_counter++;
-    if (system_state == 0) {
-        // State 0: 消灯
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
-    } else if (system_state == 1) {
-        // State 1: 1Hz点滅 (500ms ON / 500ms OFF) => 10カウント毎にトグル
-        if (led_counter % 10 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    } else if (system_state == 2) {
-        // State 2: 2Hz点滅 (250ms ON / 250ms OFF) => 5カウント毎にトグル
-        if (led_counter % 5 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    } else if (system_state == 3) {
-        // State 3: 5Hz点滅 (100ms ON / 100ms OFF) => 2カウント毎にトグル
-        if (led_counter % 2 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-    } else if (system_state == 99) {
-        // State 99 (FAULT): 10Hz高速点滅 (50ms ON / 50ms OFF) => 1カウント毎にトグル
+    if (is_fault_state) {
+        // FAULT状態: 10Hz高速点滅 (50ms ON / 50ms OFF) => 1カウント毎にトグル
         HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    } else if (!is_system_active) {
+        // OFF: 消灯
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+    } else {
+        // ON: 2Hz点滅 (250ms ON / 250ms OFF) => 5カウント毎にトグル
+        if (led_counter % 5 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
     }
 
     /* 3. デバッグ用にUARTで現在の状態を出力 */
     char msg[64];
-    snprintf(msg, sizeof(msg), "[State: %d] Target: %4d | MotorState: %d\r\n", system_state, target_rpm, state);
+    snprintf(msg, sizeof(msg), "[Sys: %s] Target: %4d | MotorState: %d\r\n", 
+             is_system_active ? "ON " : "OFF", target_rpm, state);
     HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     
     HAL_Delay(50); /* サンプリングレートの制御 (50ms/loop) */
@@ -699,16 +690,14 @@ void UI_HandleStartStopButton_cb(void)
   /* 簡易的なチャタリング防止 (200ms以内は無視) */
   uint32_t current_time = HAL_GetTick();
   if (current_time - last_button_press_time > 200) {
-    if (system_state == 99) {
+    if (is_fault_state) {
       // エラー状態ならエラーをクリアして停止状態へ
       MC_AcknowledgeFaultMotor1();
-      system_state = 0;
+      is_fault_state = false;
+      is_system_active = false;
     } else {
-      // 状態を 0 -> 1 -> 2 -> 3 -> 0 と遷移させる
-      system_state++;
-      if (system_state > 3) {
-        system_state = 0;
-      }
+      // ON/OFFを反転させる
+      is_system_active = !is_system_active;
     }
     last_button_press_time = current_time;
   }

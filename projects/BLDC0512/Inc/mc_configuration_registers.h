@@ -125,7 +125,7 @@ typedef struct
 #define configurationFlag2_M1     (QUASI_SYNC_FLAG)
 
 #define DRIVE_TYPE_M1              0
-#define PRIM_SENSOR_M1            EPLL
+#define PRIM_SENSOR_M1            EHALL
 #define AUX_SENSOR_M1             0
 #define TOPOLOGY_M1               0
 

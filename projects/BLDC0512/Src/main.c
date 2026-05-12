@@ -53,6 +53,7 @@ ADC_HandleTypeDef hadc1;
 ADC_HandleTypeDef hadc2;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 
 UART_HandleTypeDef huart2;
 DMA_HandleTypeDef hdma_usart2_rx;
@@ -64,7 +65,7 @@ volatile bool is_fault_state = false;
 volatile uint32_t last_button_press_time = 0; // チャタリング防止用
 
 /* ここで目標回転数を設定します（コンパイル時に変更可能） */
-#define DEFAULT_TARGET_RPM 1000 
+#define DEFAULT_TARGET_RPM 3000
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -74,10 +75,11 @@ static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_TIM2_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_NVIC_Init(void);
 /* USER CODE BEGIN PFP */
-int16_t Get_Hall_ElectricalAngle(void);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -118,6 +120,7 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   MX_TIM1_Init();
+  MX_TIM2_Init();
   MX_USART2_UART_Init();
   MX_MotorControl_Init();
 
@@ -270,6 +273,9 @@ static void MX_NVIC_Init(void)
   /* ADC1_2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(ADC1_2_IRQn, 2, 0);
   HAL_NVIC_EnableIRQ(ADC1_2_IRQn);
+  /* TIM2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(TIM2_IRQn, 2, 0);
+  HAL_NVIC_EnableIRQ(TIM2_IRQn);
   /* EXTI15_10_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 3, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
@@ -502,7 +508,7 @@ static void MX_TIM1_Init(void)
   sBreakInputConfig.Source = TIM_BREAKINPUTSOURCE_BKIN;
   sBreakInputConfig.Enable = TIM_BREAKINPUTSOURCE_ENABLE;
   sBreakInputConfig.Polarity = TIM_BREAKINPUTSOURCE_POLARITY_LOW;
-  if (HAL_TIMEx_ConfigBreakInput(&htim1, TIM_BREAKINPUT_BRK2, &sBreakInputConfig) != HAL_OK)
+  if (HAL_TIMEx_ConfigBreakInput(&htim1, TIM_BREAKINPUT_BRK, &sBreakInputConfig) != HAL_OK)
   {
     Error_Handler();
   }
@@ -536,12 +542,12 @@ static void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_ENABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
   sBreakDeadTimeConfig.DeadTime = ((DEAD_TIME_COUNTS) / 2);
-  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
+  sBreakDeadTimeConfig.BreakState = TIM_BREAK_ENABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-  sBreakDeadTimeConfig.BreakFilter = 0;
-  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_ENABLE;
+  sBreakDeadTimeConfig.BreakFilter = 4;
+  sBreakDeadTimeConfig.Break2State = TIM_BREAK2_DISABLE;
   sBreakDeadTimeConfig.Break2Polarity = TIM_BREAK2POLARITY_HIGH;
-  sBreakDeadTimeConfig.Break2Filter = 4;
+  sBreakDeadTimeConfig.Break2Filter = 3;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
   if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
   {
@@ -551,6 +557,60 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 2 */
   HAL_TIM_MspPostInit(&htim1);
+
+}
+
+/**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_HallSensor_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 0;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = M1_HALL_TIM_PERIOD;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim2, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = M1_HALL_IC_FILTER;
+  sConfig.Commutation_Delay = 0;
+  if (HAL_TIMEx_HallSensor_Init(&htim2, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_OC2REF;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
 
 }
 
@@ -634,52 +694,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
-  // ホールセンサー入力ピンの初期化（UART/ADCとの衝突回避）
-  // 代わりに空いているArduino互換ピン(D4, D5, D6)を使用します。
-  GPIO_InitStruct.Pin = GPIO_PIN_5 | GPIO_PIN_4 | GPIO_PIN_10;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  // Nucleo上の緑色LED (LD2) が繋がるPA5を出力ピンとして初期化
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
   /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-/* USER CODE BEGIN 4 */
-
-/**
- * @brief  U/V/W のホールセンサ信号（GPIO）を読み取り、ロータの電気角(dpp)を計算するサンプル
- * @note   通信等で角度情報を利用するための関数です。
- * @retval int16_t ロータ電気角 (DDPフォーマット: s16degrees)
- */
-int16_t Get_Hall_ElectricalAngle(void)
-{
-  uint8_t hall_a = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5);  // Hall A (青)
-  uint8_t hall_b = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_4);  // Hall B (緑)
-  uint8_t hall_c = HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_10); // Hall C (白)
-
-  uint8_t hall_state = (hall_a << 2) | (hall_b << 1) | hall_c;
-  int16_t electrical_angle = 0;
-
-  switch (hall_state)
-  {
-    case 5: electrical_angle = (int16_t)(-32768); break;                 // 0度 (-180度相当)
-    case 1: electrical_angle = (int16_t)(-32768 + 65536 / 6 * 1); break; // 60度
-    case 3: electrical_angle = (int16_t)(-32768 + 65536 / 6 * 2); break; // 120度
-    case 2: electrical_angle = (int16_t)(-32768 + 65536 / 6 * 3); break; // 180度
-    case 6: electrical_angle = (int16_t)(-32768 + 65536 / 6 * 4); break; // 240度
-    case 4: electrical_angle = (int16_t)(-32768 + 65536 / 6 * 5); break; // 300度
-    default: electrical_angle = 0; break; // 異常時
-  }
-
-  return electrical_angle;
-}
 
 /**
   * @brief  User Button (PC13) callback overriding MCSDK weak function

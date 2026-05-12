@@ -77,20 +77,26 @@ void Error_Handler(void);
 #define UART_TX_GPIO_Port GPIOA
 #define UART_RX_Pin GPIO_PIN_3
 #define UART_RX_GPIO_Port GPIOA
+#define M1_OCP_Pin GPIO_PIN_6
+#define M1_OCP_GPIO_Port GPIOA
 #define M1_PWM_UL_Pin GPIO_PIN_7
 #define M1_PWM_UL_GPIO_Port GPIOA
 #define M1_PWM_VL_Pin GPIO_PIN_0
 #define M1_PWM_VL_GPIO_Port GPIOB
 #define M1_PWM_WL_Pin GPIO_PIN_1
 #define M1_PWM_WL_GPIO_Port GPIOB
+#define M1_HALL_H3_Pin GPIO_PIN_10
+#define M1_HALL_H3_GPIO_Port GPIOB
 #define M1_PWM_UH_Pin GPIO_PIN_8
 #define M1_PWM_UH_GPIO_Port GPIOA
 #define M1_PWM_VH_Pin GPIO_PIN_9
 #define M1_PWM_VH_GPIO_Port GPIOA
 #define M1_PWM_WH_Pin GPIO_PIN_10
 #define M1_PWM_WH_GPIO_Port GPIOA
-#define M1_OCP_Pin GPIO_PIN_11
-#define M1_OCP_GPIO_Port GPIOA
+#define M1_HALL_H1_Pin GPIO_PIN_15
+#define M1_HALL_H1_GPIO_Port GPIOA
+#define M1_HALL_H2_Pin GPIO_PIN_3
+#define M1_HALL_H2_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

@@ -31,8 +31,7 @@
 #include "r3_2_l4xx_pwm_curr_fdbk.h"
 #include "ramp_ext_mngr.h"
 #include "circle_limitation.h"
-#include "sto_speed_pos_fdbk.h"
-#include "sto_pll_speed_pos_fdbk.h"
+#include "hall_speed_pos_fdbk.h"
 
 /* USER CODE BEGIN Additional include */
 
@@ -43,9 +42,6 @@ extern PID_Handle_t PIDIdHandle_M1;
 extern PWMC_R3_2_Handle_t PWM_Handle_M1;
 extern PQD_MotorPowMeas_Handle_t PQD_MotorPowMeasM1;
 extern PQD_MotorPowMeas_Handle_t *pPQD_MotorPowMeasM1;
-extern STO_Handle_t STO_M1;
-extern RevUpCtrl_Handle_t RevUpControlM1;
-extern STO_PLL_Handle_t STO_PLL_M1;
 
 extern CircleLimitation_Handle_t CircleLimitationM1;
 extern RampExtMngr_Handle_t RampExtMngrHFParamsM1;
@@ -59,6 +55,7 @@ extern SpeednTorqCtrl_Handle_t *pSTC[NBR_OF_MOTORS];
 extern MCI_Handle_t Mci[NBR_OF_MOTORS];
 extern SpeednTorqCtrl_Handle_t SpeednTorqCtrlM1;
 extern PID_Handle_t PIDSpeedHandle_M1;
+extern HALL_Handle_t HALL_M1;
 
 /* USER CODE BEGIN Additional extern */
 

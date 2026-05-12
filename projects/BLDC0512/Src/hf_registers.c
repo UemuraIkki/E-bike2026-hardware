@@ -133,11 +133,6 @@ __weak uint8_t HF_GetPtrReg(uint16_t dataID, void **dataPtr)
             *dataPtr = &(pMCIN->pFOCVars->Iqdref.d);
             break;
           }
-          case MC_REG_OPENLOOP_EL_ANGLE:
-          {
-            *dataPtr = &((&VirtualSpeedSensorM1)->_Super.hElAngle);
-            break;
-          }
 
           case MC_REG_V_Q:
           {
@@ -163,33 +158,15 @@ __weak uint8_t HF_GetPtrReg(uint16_t dataID, void **dataPtr)
             break;
           }
 
-          case MC_REG_STOPLL_ROT_SPEED:
+          case MC_REG_HALL_SPEED:
           {
-            *dataPtr = &((&STO_PLL_M1)->_Super.hAvrMecSpeedUnit);
+            *dataPtr = &((&HALL_M1)->_Super.hAvrMecSpeedUnit);
             break;
           }
 
-          case MC_REG_STOPLL_EL_ANGLE:
+          case MC_REG_HALL_EL_ANGLE:
           {
-            *dataPtr = &((&STO_PLL_M1)->_Super.hElAngle);
-            break;
-          }
-
-#ifdef NOT_IMPLEMENTED /* Not yet implemented */
-          case MC_REG_STOPLL_I_ALPHA:
-          case MC_REG_STOPLL_I_BETA:
-            break;
-#endif
-
-          case MC_REG_STOPLL_BEMF_ALPHA:
-          {
-            *dataPtr = &((&STO_PLL_M1)->hBemf_alfa_est);
-            break;
-          }
-
-          case MC_REG_STOPLL_BEMF_BETA:
-          {
-            *dataPtr = &((&STO_PLL_M1)->hBemf_beta_est);
+            *dataPtr = &((&HALL_M1)->_Super.hElAngle);
             break;
           }
 

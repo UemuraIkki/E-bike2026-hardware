@@ -106,11 +106,6 @@ __weak void MCboot( MCI_Handle_t* pMCIList[NBR_OF_MOTORS] )
     /******************************************************/
     PID_HandleInit(&PIDSpeedHandle_M1);
 
-    /****************************************************/
-    /*   Virtual speed sensor component initialization  */
-    /****************************************************/
-    VSS_Init(&VirtualSpeedSensorM1);
-
     /********************************************************/
     /*   Bus voltage sensor component initialization        */
     /********************************************************/
@@ -451,6 +446,9 @@ __weak void UI_HandleStartStopButton_cb (void)
 __weak void mc_lock_pins (void)
 {
 LL_GPIO_LockPin(M1_CURR_AMPL_W_GPIO_Port, M1_CURR_AMPL_W_Pin);
+LL_GPIO_LockPin(M1_HALL_H1_GPIO_Port, M1_HALL_H1_Pin);
+LL_GPIO_LockPin(M1_HALL_H2_GPIO_Port, M1_HALL_H2_Pin);
+LL_GPIO_LockPin(M1_HALL_H3_GPIO_Port, M1_HALL_H3_Pin);
 LL_GPIO_LockPin(M1_PWM_UH_GPIO_Port, M1_PWM_UH_Pin);
 LL_GPIO_LockPin(M1_PWM_VH_GPIO_Port, M1_PWM_VH_Pin);
 LL_GPIO_LockPin(M1_OCP_GPIO_Port, M1_OCP_Pin);

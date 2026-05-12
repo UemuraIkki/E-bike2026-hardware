@@ -69,26 +69,8 @@
 #define SERIALCOM_TIMEOUT_OCCURENCE_TICKS   (SYS_TICK_FREQUENCY / SERIAL_COM_TIMEOUT_INVERSE) - 1u
 #define SERIALCOM_ATR_TIME_TICKS            (uint16_t)(((SYS_TICK_FREQUENCY * SERIAL_COM_ATR_TIME_MS) / 1000u) - 1u)
 
-/************************* COMMON OBSERVER PARAMETERS **************************/
-#define MAX_BEMF_VOLTAGE                    (uint16_t)((MAX_APPLICATION_SPEED_RPM * 1.2 *\
-                                            MOTOR_VOLTAGE_CONSTANT * SQRT_2) / (1000u * SQRT_3))
-/* max phase voltage, 0-peak Volts*/
-#define MAX_VOLTAGE                         (int16_t)((ADC_REFERENCE_VOLTAGE / SQRT_3) / VBUS_PARTITIONING_FACTOR)
-#define MAX_CURRENT                         (ADC_REFERENCE_VOLTAGE / (2 * RSHUNT * AMPLIFICATION_GAIN))
-#define OBS_MINIMUM_SPEED_UNIT              (uint16_t)((OBS_MINIMUM_SPEED_RPM * SPEED_UNIT) / U_RPM)
 #define MAX_APPLICATION_SPEED_UNIT          ((MAX_APPLICATION_SPEED_RPM * SPEED_UNIT) / U_RPM)
 #define MIN_APPLICATION_SPEED_UNIT          ((MIN_APPLICATION_SPEED_RPM * SPEED_UNIT) / U_RPM)
-
-/************************* PLL PARAMETERS **************************/
-#define C1                                  (int32_t)((((int16_t)F1) * RS) / (LS * TF_REGULATION_RATE))
-#define C2                                  (int32_t)GAIN1
-#define C3                                  (int32_t)((((int16_t)F1) * MAX_BEMF_VOLTAGE)\
-                                            / (LS * MAX_CURRENT * TF_REGULATION_RATE))
-#define C4                                  (int32_t)GAIN2
-#define C5                                  (int32_t)((((int16_t)F1) * MAX_VOLTAGE)\
-                                            / (LS * MAX_CURRENT * TF_REGULATION_RATE))
-#define PERCENTAGE_FACTOR                   (uint16_t)(VARIANCE_THRESHOLD*128u)
-#define HFI_MINIMUM_SPEED                   (uint16_t) (HFI_MINIMUM_SPEED_RPM/6u)
 
 #define MAX_APPLICATION_SPEED_UNIT2         ((MAX_APPLICATION_SPEED_RPM2 * SPEED_UNIT) / U_RPM)
 #define MIN_APPLICATION_SPEED_UNIT2         ((MIN_APPLICATION_SPEED_RPM2 * SPEED_UNIT) / U_RPM)
@@ -174,7 +156,7 @@
 #define DIFFTERM_ENABLE
 
 /* Sensors setting */
-#define MAIN_SCFG                           UI_SCODE_STO_PLL
+#define MAIN_SCFG                           UI_SCODE_HALL
 #define AUX_SCFG                               0x0
 #define PLLTUNING_ENABLE
 
@@ -195,6 +177,12 @@
 #define DIN_ACTIVE_HIGH                     Bit_SET
 #define DOUT_ACTIVE_HIGH                    DOutputActiveHigh
 #define DOUT_ACTIVE_LOW                     DOutputActiveLow
+
+/**********  HALL TIMER MOTOR 1 *************/
+#define M1_HALL_TIM_PERIOD                  65535
+#define M1_HALL_IC_FILTER_LL LL_TIM_IC_FILTER_FDIV16_N6
+#define M1_HALL_IC_FILTER   11
+#define SPD_HALL_TIM_M1_IRQHandler               TIM2_IRQHandler
 
 #define LPF_FILT_CONST                      ((int16_t)(32767 * 0.5))
 

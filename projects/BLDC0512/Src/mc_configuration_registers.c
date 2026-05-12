@@ -42,9 +42,9 @@ const GlobalConfig_reg_t globalConfig_reg =
 
 static const ApplicationConfig_reg_t M1_ApplicationConfig_reg =
 {
-  .maxMechanicalSpeed = 4980,
+  .maxMechanicalSpeed = 4000,
   .maxReadableCurrent = M1_MAX_READABLE_CURRENT,
-  .nominalCurrent     = 5,
+  .nominalCurrent     = 7,
   .nominalVoltage     = 24,
   .driveType          = DRIVE_TYPE_M1,
 };
@@ -52,13 +52,13 @@ static const ApplicationConfig_reg_t M1_ApplicationConfig_reg =
 //cstat !MISRAC2012-Rule-9.2
 static const MotorConfig_reg_t M1_MotorConfig_reg =
 {
-  .polePairs  = 4,
+  .polePairs  = 2,
   .ratedFlux  = 3.2,
   .rs         = 0.1,
   .ls         = 0.00008*1.000,
   .ld         = 0.00008,
-  .maxCurrent = 5,
-  .name = "LIN Engineering BL23E33-"
+  .maxCurrent = 7,
+  .name = "EBIKE"
 };
 
 static const FOCFwConfig_reg_t M1_FOCConfig_reg =

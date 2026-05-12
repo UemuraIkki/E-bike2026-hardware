@@ -35,27 +35,6 @@
 /* USER CODE END Additional define */
 
 /**
-  * @brief  SpeedNPosition sensor parameters Motor 1 - Base Class.
-  */
-VirtualSpeedSensor_Handle_t VirtualSpeedSensorM1 =
-{
-
-  ._Super =
-  {
-    .bElToMecRatio             = POLE_PAIR_NUM,
-    .hMaxReliableMecSpeedUnit  = (uint16_t)(1.15*MAX_APPLICATION_SPEED_UNIT),
-    .hMinReliableMecSpeedUnit  = (uint16_t)(MIN_APPLICATION_SPEED_UNIT),
-    .bMaximumSpeedErrorsNumber = M1_SS_MEAS_ERRORS_BEFORE_FAULTS,
-    .hMaxReliableMecAccelUnitP = 65535,
-    .hMeasurementFrequency     = TF_REGULATION_RATE_SCALED,
-    .DPPConvFactor             = DPP_CONV_FACTOR,
-  },
-
-  .hSpeedSamplingFreqHz        = MEDIUM_FREQUENCY_TASK_RATE,
-  .hTransitionSteps            = (int16_t)((TF_REGULATION_RATE * TRANSITION_DURATION) / 1000.0),
-};
-
-/**
   * temperature sensor parameters Motor 1.
   */
 RegConv_t TempRegConv_M1 =

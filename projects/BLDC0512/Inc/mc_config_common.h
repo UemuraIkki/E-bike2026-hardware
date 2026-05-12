@@ -33,7 +33,6 @@
 
 extern RegConv_t TempRegConv_M1;
 extern NTC_Handle_t TempSensor_M1;
-extern VirtualSpeedSensor_Handle_t VirtualSpeedSensorM1;
 extern RegConv_t VbusRegConv_M1;
 extern RDivider_Handle_t BusVoltageSensor_M1;
 extern PWMC_Handle_t *pwmcHandle[NBR_OF_MOTORS];

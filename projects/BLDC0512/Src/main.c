@@ -142,6 +142,7 @@ int main(void)
         case 1: target_rpm = 1000; break;
         case 2: target_rpm = 2000; break;
         case 3: target_rpm = 3000; break;
+        case 99: target_rpm = 0; break; // FAULT
         default: target_rpm = 0; break; // state 0
     }
 
@@ -151,7 +152,7 @@ int main(void)
     if (state == FAULT_OVER || state == FAULT_NOW) {
         /* 異常時の安全処理 */
         current_rpm_cmd = 0;
-        system_state = 0; // エラー時は強制的にState 0に戻す
+        system_state = 99; // FAULT状態へ遷移
     } 
     else if (system_state == 0) {
         /* 停止状態 */
@@ -160,6 +161,10 @@ int main(void)
             current_rpm_cmd = 0;
         }
     } 
+    else if (system_state == 99) {
+        /* エラー状態 (ボタンが押されてクリアされるのを待つ) */
+        current_rpm_cmd = 0;
+    }
     else {
         /* 稼働状態 (State 1, 2, 3) */
         if (state == IDLE) {
@@ -189,11 +194,14 @@ int main(void)
     } else if (system_state == 3) {
         // State 3: 5Hz点滅 (100ms ON / 100ms OFF) => 2カウント毎にトグル
         if (led_counter % 2 == 0) HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+    } else if (system_state == 99) {
+        // State 99 (FAULT): 10Hz高速点滅 (50ms ON / 50ms OFF) => 1カウント毎にトグル
+        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
     }
 
     /* 3. デバッグ用にUARTで現在の状態を出力 */
     char msg[64];
-    snprintf(msg, sizeof(msg), "[State: %d] Target RPM: %4d\r\n", system_state, target_rpm);
+    snprintf(msg, sizeof(msg), "[State: %d] Target: %4d | MotorState: %d\r\n", system_state, target_rpm, state);
     HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
     
     HAL_Delay(50); /* サンプリングレートの制御 (50ms/loop) */
@@ -691,10 +699,16 @@ void UI_HandleStartStopButton_cb(void)
   /* 簡易的なチャタリング防止 (200ms以内は無視) */
   uint32_t current_time = HAL_GetTick();
   if (current_time - last_button_press_time > 200) {
-    // 状態を 0 -> 1 -> 2 -> 3 -> 0 と遷移させる
-    system_state++;
-    if (system_state > 3) {
+    if (system_state == 99) {
+      // エラー状態ならエラーをクリアして停止状態へ
+      MC_AcknowledgeFaultMotor1();
       system_state = 0;
+    } else {
+      // 状態を 0 -> 1 -> 2 -> 3 -> 0 と遷移させる
+      system_state++;
+      if (system_state > 3) {
+        system_state = 0;
+      }
     }
     last_button_press_time = current_time;
   }

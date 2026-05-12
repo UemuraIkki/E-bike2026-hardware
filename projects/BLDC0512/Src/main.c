@@ -618,11 +618,21 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_5, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : Start_Stop_Pin */
   GPIO_InitStruct.Pin = Start_Stop_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(Start_Stop_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
   // ホールセンサー入力ピンの初期化（UART/ADCとの衝突回避）
@@ -673,24 +683,20 @@ int16_t Get_Hall_ElectricalAngle(void)
 }
 
 /**
-  * @brief  EXTI line detection callbacks.
-  * @param  GPIO_Pin Specifies the pins connected EXTI line
+  * @brief  User Button (PC13) callback overriding MCSDK weak function
   * @retval None
   */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+void UI_HandleStartStopButton_cb(void)
 {
-  if (GPIO_Pin == Start_Stop_Pin) // PC13 (USER BUTTON)
-  {
-    /* 簡易的なチャタリング防止 (200ms以内は無視) */
-    uint32_t current_time = HAL_GetTick();
-    if (current_time - last_button_press_time > 200) {
-      // 状態を 0 -> 1 -> 2 -> 3 -> 0 と遷移させる
-      system_state++;
-      if (system_state > 3) {
-        system_state = 0;
-      }
-      last_button_press_time = current_time;
+  /* 簡易的なチャタリング防止 (200ms以内は無視) */
+  uint32_t current_time = HAL_GetTick();
+  if (current_time - last_button_press_time > 200) {
+    // 状態を 0 -> 1 -> 2 -> 3 -> 0 と遷移させる
+    system_state++;
+    if (system_state > 3) {
+      system_state = 0;
     }
+    last_button_press_time = current_time;
   }
 }
 

@@ -1,0 +1,22 @@
+{
+    "BEmfConstant": 3.4727883338928223,
+    "compatibility": [
+        "FOC",
+        "sixStep"
+    ],
+    "description": "for E-bike",
+    "friction": 0.39,
+    "hardwareFamily": "MOTOR",
+    "id": "56JXE",
+    "inertia": 0.05,
+    "label": "56JXE",
+    "ls": 0.28,
+    "magneticStructure": {
+        "type": "SM-PMSM"
+    },
+    "maxRatedSpeed": 4998,
+    "nominalCurrent": 14.175088882446289,
+    "nominalDCVoltage": 23.423126220703125,
+    "polePairs": 2,
+    "rs": 0.1415906548500061
+}

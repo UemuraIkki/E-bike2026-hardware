@@ -35,6 +35,7 @@
 #define IQ_START_S16A   1070   // ≈1.0A（1068 s16A/A換算）まず控えめ
 #define IQ_MAX_S16A     6000   // ≈5.6A 安全上限
 #define OVERSPEED_RPM   4000   // まずは余裕を持って4000。後で下げてキャップ動作確認
+#define REVERSE_GUARD_RPM (-50) // これより逆転側に振れたら異常とみなす閾値（ノイズ耐性のため0より少し余裕を持たせる）
 #ifndef RPM_TO_SPEED_UNIT
 #define RPM_TO_SPEED_UNIT(rpm) ((int16_t)(((rpm) * SPEED_UNIT) / U_RPM))
 #endif
@@ -149,7 +150,17 @@ int main(void)
 	      break;
 
 	    case 2: {  // トルクモード＋速度キャップ
-	      int16_t spd   = MC_GetMecSpeedAverageMotor1();
+	      int16_t spd = MC_GetMecSpeedAverageMotor1();
+
+	      if (!MC_GetSpeedSensorReliabilityMotor1() ||
+	          spd < RPM_TO_SPEED_UNIT(REVERSE_GUARD_RPM)) {
+	          // STO速度推定の信頼性低下、または逆回転を検知 → 即座に停止して再起動シーケンスへ
+	          MC_StopMotor1();
+	          lastIq = 0;
+	          state = 0;
+	          break;
+	      }
+
 	      int16_t iqRef = (spd > RPM_TO_SPEED_UNIT(OVERSPEED_RPM)) ? 0 : IQ_START_S16A;
 	      if (iqRef != lastIq) {                       // 変化時だけ再指令
 	          MC_ProgramTorqueRampMotor1(iqRef, 100);

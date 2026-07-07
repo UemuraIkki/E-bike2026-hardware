@@ -599,10 +599,19 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-/* Retarget printf to SWV (ITM) trace console, keeps USART2 free for MCP */
+/* Retarget printf to the debugger console via semihosting (SYS_WRITEC),
+ * guarded by C_DEBUGEN so it's a no-op (not a HardFault) when no debugger
+ * is attached. Keeps USART2 free for MCP and avoids SWO wiring entirely. */
 int __io_putchar(int ch)
 {
-  ITM_SendChar((uint32_t)ch);
+  if ((CoreDebug->DHCSR & CoreDebug_DHCSR_C_DEBUGEN_Msk) != 0UL)
+  {
+    static uint8_t c;
+    c = (uint8_t)ch;
+    register uint32_t r0 __asm__("r0") = 0x03; /* SYS_WRITEC */
+    register void    *r1 __asm__("r1") = &c;
+    __asm__ volatile ("bkpt #0xAB" : "+r"(r0) : "r"(r1) : "memory");
+  }
   return ch;
 }
 /* USER CODE END 4 */

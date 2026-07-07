@@ -149,19 +149,14 @@ int main(void)
 	      }
 	      break;
 
-	    case 2: {  // トルクモード＋速度キャップ
+	    case 2: {  // トルクモード＋速度キャップ（トルク制御からは抜けない）
 	      int16_t spd = MC_GetMecSpeedAverageMotor1();
-
-	      if (!MC_GetSpeedSensorReliabilityMotor1() ||
-	          spd < RPM_TO_SPEED_UNIT(REVERSE_GUARD_RPM)) {
-	          // STO速度推定の信頼性低下、または逆回転を検知 → 即座に停止して再起動シーケンスへ
-	          MC_StopMotor1();
-	          lastIq = 0;
-	          state = 0;
-	          break;
-	      }
-
-	      int16_t iqRef = (spd > RPM_TO_SPEED_UNIT(OVERSPEED_RPM)) ? 0 : IQ_START_S16A;
+	      bool speedOk = MC_GetSpeedSensorReliabilityMotor1() &&
+	                     (spd >= RPM_TO_SPEED_UNIT(REVERSE_GUARD_RPM));
+	      // 信頼性低下/逆回転/オーバースピードのいずれかでIqを0に。
+	      // MC_StopMotor1()は呼ばずRUN・トルク制御のままにして、
+	      // 条件が消えたら次ループで自動的にIQ_START_S16Aへ復帰させる。
+	      int16_t iqRef = (!speedOk || (spd > RPM_TO_SPEED_UNIT(OVERSPEED_RPM))) ? 0 : IQ_START_S16A;
 	      if (iqRef != lastIq) {                       // 変化時だけ再指令
 	          MC_ProgramTorqueRampMotor1(iqRef, 100);
 	          lastIq = iqRef;

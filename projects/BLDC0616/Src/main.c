@@ -22,6 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "mc_api.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -57,6 +58,7 @@ DMA_HandleTypeDef hdma_usart2_tx;
 /* USER CODE BEGIN PV */
 static uint8_t state = 0;
 static int16_t lastIq = 0;
+static uint32_t printTick = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -156,6 +158,13 @@ int main(void)
 	      break;
 	    }
 	  }
+
+	  if (HAL_GetTick() - printTick >= 200) {
+	      printTick = HAL_GetTick();
+	      qd_f_t iqd = MC_GetIqdMotor1_F();
+	      printf("Iq=%.3fA Id=%.3fA\r\n", iqd.q, iqd.d);
+	  }
+
 	  HAL_Delay(5);
   }
   /* USER CODE END 3 */
@@ -590,7 +599,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+/* Retarget printf to SWV (ITM) trace console, keeps USART2 free for MCP */
+int __io_putchar(int ch)
+{
+  ITM_SendChar((uint32_t)ch);
+  return ch;
+}
 /* USER CODE END 4 */
 
 /**

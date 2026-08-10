@@ -1,121 +1,59 @@
-# ST Workbench Projects
+# E-bike 2026 ハードウェア開発資料
 
-このリポジトリは、STM32 ST Workbench (X-CUBE-MCSDK) を用いたモータ制御開発の記録です。
-内容を以下の3部門に分けて管理します。
+古い自転車を電動アシスト化し、人力に応じてモータ出力を変えるE-bikeの開発記録です。レポート作成に必要な仕様、開発経過、担当範囲、試験結果、考察材料を、個人情報を含めずに集約します。
 
-- **モータ部門** — FOC/センサレス制御などモータ駆動そのものに関する開発
-- **ホールセンサ部門** — ホールセンサを用いた位置/速度検出に関する開発
-- **トルクセンサ部門** — トルクセンサを用いた検出・制御に関する開発
+## 重要方針
 
-現時点ではモータ部門のみ記載しています。他部門は追って追記します。
+- 氏名、学籍番号、個人メールアドレス、顔写真などは登録しません。
+- 担当者は `担当A`〜`担当D` の匿名ラベルで管理します。
+- 実名対応表、個人の感想、表紙、最終提出PDFはローカルだけで管理します。
+- X-CUBE-MCSDK本体、CMSIS、HALドライバなどの第三者配布物は登録しません。
+- Workbench設定スナップショットには過去の実験値も含まれます。現行仕様は必ず [仕様書](docs/02_specifications.md) を基準にします。
 
----
+詳細は [PRIVACY.md](PRIVACY.md) と [THIRD_PARTY.md](THIRD_PARTY.md) を参照してください。
 
-## モータ部門
+## レポート資料
 
-### 現状 (最新: BLDC0616)
-
-[projects/BLDC0616](projects/BLDC0616) が最新のモータ制御プロジェクトです。STM32L476RGTx +
-MCSDK v6.4.2-Full をベースに、**センサレスFOC制御**でモータを駆動しています。
-
-| 項目 | 内容 |
+| 章 | 資料 |
 |---|---|
-| MCU | STM32L476RGTx (LQFP64) |
-| MCSDK | v6.4.2-Full |
-| 制御方式 | FOC (Field Oriented Control) |
-| 位置/速度推定 | センサレス — State Observer + PLL (`STO_PLL_M1`) |
-| 電流検出 | 三相シャント (THREE_SHUNT, Rshunt = 0.01Ω) |
-| PWM周波数 | 16 kHz |
-| 対象モータ | `56JXE` (E-bike用 SM-PMSM, 2 pole pairs, 定格電流 14.175A, 最大回転数 4998rpm) |
-| 起動方式 | Start/Stopボタン (PC13, EXTI) → `MC_StartMotor1()` → RUN到達後トルクランプ制御 |
-| 保護 | オーバースピードキャップ (4000rpm)、FAULTステートでの自動再起動 |
+| 1. 装置・ソフトウェアの概要 | [docs/01_overview.md](docs/01_overview.md) |
+| 2. 装置・ソフトウェアの仕様 | [docs/02_specifications.md](docs/02_specifications.md) |
+| 3. 開発計画・役割分担 | [docs/03_plan_and_roles.md](docs/03_plan_and_roles.md) |
+| 4. 開発 | [docs/04_development.md](docs/04_development.md) |
+| 5. 動作試験 | [docs/05_testing.md](docs/05_testing.md) |
+| 6. 考察 | [docs/06_discussion.md](docs/06_discussion.md) |
+| 7. 感想 | [docs/07_reflection_template.md](docs/07_reflection_template.md) |
 
-制御パラメータは [BLDC0616/Inc/drive_parameters.h](projects/BLDC0616/Inc/drive_parameters.h)、
-モータ電気定数は [BLDC0616/Inc/pmsm_motor_parameters.h](projects/BLDC0616/Inc/pmsm_motor_parameters.h)
-に定義されています。アプリケーションロジック(起動シーケンス、トルクランプ、オーバースピード監視)は
-[BLDC0616/Src/main.c](projects/BLDC0616/Src/main.c) に実装されています。
+提出条件と資料の不足状況は [docs/README.md](docs/README.md)、写真や測定結果の追加方法は [docs/evidence/README.md](docs/evidence/README.md) にまとめています。
 
-モータの物理定数(定格電流・BEMF定数・慣性など)は [hardware/motor/56JXE.json](hardware/motor/56JXE.json)
-としてST Workbench用に切り出して管理しています。
+## 現在の技術構成
 
-### なぜセンサレス制御なのか
+- 制御ボード: NUCLEO-L476RG（STM32L476RG、bxCAN内蔵）
+- パワーボード: X-NUCLEO-IHM08M1（3相インバータ、最大出力電流10A）
+- モータ: ZGC 57DMWH75-2440、24V BLDC、極対数2、定格4000rpm、無負荷5000rpm、定格0.28N·m / 7A
+- 制御: X-CUBE-MCSDK 6.4.2、センサレスFOC（State Observer + PLL）
+- トルクセンサ: BF SR系、CAN出力
+- CANトランシーバ: SN65HVD230、3.3V動作
+- デバッグ: SWD固定
 
-当初は搭載モータのホールセンサ(3相中のHallB)を使った120°通電/ホールFOC制御を狙っていましたが、
-**HallB信号が実際には出力されていない(センサ故障)** ことが判明しました。この故障は開発初期には気づけず、
-ホール信号を使った位置推定が安定しない原因の切り分けに時間を要しました。
+現在はセンサレスFOCでモータを回し、トルクモードと安全制限を実機調整している段階です。Hall方式は検証資料を残しますが、現行運用方式ではありません。
 
-最終的に「HallBが物理的に死んでいる」ことを特定し、ホールセンサに依存しない
-**State Observer + PLL によるセンサレスBEMF推定**へ制御方式を切り替えることで、
-このモータでも安定した速度/位置推定とFOC駆動を実現しています。
+## ファームウェア資料
 
-ホールセンサを使った制御の実装・検証自体は [projects/BLDC0512](projects/BLDC0512) 系列
-(`hall_speed_pos_fdbk.c/.h`, TIM2 Hall入力など)に残しており、詳細はホールセンサ部門で扱います。
+- [firmware/README.md](firmware/README.md): MCSDKでの再生成方法とコード資料の使い方
+- [firmware/sensorless-speed-control.md](firmware/sensorless-speed-control.md): 速度制御の挿入箇所と試験手順
+- [firmware/sensorless-torque-control.md](firmware/sensorless-torque-control.md): トルク制御、助走、速度キャップ
+- [firmware/archive/main-user-code-history.md](firmware/archive/main-user-code-history.md): 過去の `main.c` USER CODEブロックの機械抽出
+- [projects/README.md](projects/README.md): `.stwb6` スナップショットの位置付け
 
-### 経緯 (BLDC05xx → BLDC0616)
+## 提出までの不足資料
 
-プロジェクトは `BLDCMMDD` (月日) の命名で日々のイテレーションを重ねています。モータ部門に関連する
-主な変遷は以下の通りです。
+- 4担当それぞれの作業日、作業時間、判断理由
+- Hall回路図と実装写真
+- CANモジュール回路図、ビットレート、CAN ID、フレーム定義、受信ログ
+- 車体整備の実施前後写真と確認結果
+- トルクセンサ用ワッシャの寸法図、材質、加工方法
+- モータ試験の条件表、時系列ログ、速度キャップ試験
+- 30km / 約2時間を想定した消費電力量と温度試験
 
-1. **BLDC0512 系列** — Potentiometer(可変抵抗)によるトルコ指令から、Step-Switching + LED点滅への置き換え、
-   ボタン割り込みハンドラの修正 (MCSDK weak関数の上書き)、FAULT状態のハンドリングと診断出力の追加、
-   単一の固定目標RPM + ON/OFFトグルへのリファクタなど、Hall入力(TIM2)を使う前提で機能を積み上げました。
-   その過程でHallBの異常に気づき、手動Hall初期化コードを一旦作り込んだ後、
-   ST Workbench側がTIM2 Hallセンサの初期化を正しく生成できるようになったため、手動実装を撤去しています。
-2. **BLDC0616** — Hall依存をやめ、センサレス(STO+PLL)FOCを前提とした新規プロジェクトとして構成。
-   起動→トルクモード→オーバースピード監視のシンプルな状態機械で駆動を確認する段階です。
-
-### 既知の課題: チェーンにブレーキ/抵抗を掛けると逆回転方向に暴走する
-
-**現象**: 駆動中のチェーン(ドライブトレイン)側にブレーキや抵抗を掛けると、モータが逆回転方向に
-急激に高速回転し始める。
-
-**考えられる原因**
-
-このモータはBEMF(逆起電力)を利用したセンサレス位置/速度推定 (`STO_PLL_M1`) で駆動しており、
-外部からチェーン経由で急激なトルク変化(ブレーキ/抵抗)を与えられると、以下のように推定と実回転が
-ズレることで発生していると考えられる。
-
-1. **推定角度と実回転子角度の同期外れ**
-   State Observer + PLLは回転速度・BEMFの連続性を前提にしており、外部から急に回転数を変化させられると
-   速度推定の分散(variance)が急増し、推定角度が実際の回転子角度から外れる
-   ([sto_pll_speed_pos_fdbk.c:426-437](projects/BLDC0616/MCSDK_v6.4.2-Full/MotorControl/MCSDK/MCLib/Any/Src/sto_pll_speed_pos_fdbk.c#L426-L437))。
-2. **フォールト検知までのタイムラグ**
-   速度推定/BEMF整合性の異常は `ReliabilityCounter` としてカウントされるが、実際にフォールト
-   (`bSpeedErrorNumber`)として確定するまでには
-   [`M1_SS_MEAS_ERRORS_BEFORE_FAULTS = 100`](projects/BLDC0616/Inc/drive_parameters.h#L36)
-   回連続の異常を要する設計になっている
-   ([sto_pll_speed_pos_fdbk.c:511-524](projects/BLDC0616/MCSDK_v6.4.2-Full/MotorControl/MCSDK/MCLib/Any/Src/sto_pll_speed_pos_fdbk.c#L511-L524))。
-   このため、角度推定がズレ始めてからフォールト停止するまでの間、ズレた角度のままFOC電流指令が
-   投入され続ける猶予期間が存在する。
-3. **アプリ側に逆回転/信頼性低下を監視するロジックが無い**
-   [main.c](projects/BLDC0616/Src/main.c#L149-L157) のトルクモード制御 (state 2) は、
-   順回転方向のオーバースピード (`spd > 4000rpm`) のみを監視しており、回転方向の反転や
-   速度推定の信頼性低下 (`IsSpeedReliable` / `IsBemfConsistent`) を見て `Iq` 指令を落とす、
-   といった保護が実装されていない。ズレた推定角度に対して固定のIq指令を投入し続けると、
-   実回転子から見て意図しない方向にトルクが発生し得るため、ブレーキ/抵抗をきっかけに
-   「逆回転方向へ加速し続ける」ような挙動として現れていると推測される。
-
-センサレスBEMF方式は原理的に、低速域や外部からの強制回転(オーバーホール/回生的な負荷)に弱いという
-既知の制約があり、今回の現象もその弱点が顕在化したものと考えられる。
-
-**対策**
-
-- [x] `main.c` のトルク制御ループで、回転方向の反転や `STO` の信頼性低下を検知した際に
-  `Iq` を0に落とすガードを実装済み ([main.c:152-165](projects/BLDC0616/Src/main.c#L152-L165))。
-  `MC_GetSpeedSensorReliabilityMotor1()` が false、または推定速度が `REVERSE_GUARD_RPM`
-  (-50rpm)を下回った時点でトルク指令を0にする。ただし `MC_StopMotor1()` は呼ばず、
-  RUN状態・トルク制御からは抜けない。センサレスはフライングスタート(高速回転中の再起動)に
-  対応していないため、一度停止して再起動すると始動シーケンスがRUNへ復帰できず
-  目標トルク0のまま固着する不具合が過去にあったため、この形にしている。
-  条件が解消すれば次ループで自動的にIqが復帰する。
-- [ ] `M1_SS_MEAS_ERRORS_BEFORE_FAULTS` を下げてフォールト確定までのタイムラグを縮める
-  (誤フォールトとのトレードオフに注意)。
-- [ ] 低速域 (`OBS_MINIMUM_SPEED_RPM` 付近以下)では推定信頼性が下がりやすいため、
-  この領域でのトルク指令を強制的に絞る/停止するロジックを追加する。
-- [ ] チェーン側からの急激な負荷変動を常時受ける用途であれば、センサレスのみに頼らず、
-  ホールセンサ(修理・交換後)やエンコーダによる位置フィードバックの併用を検討する
-  (ホールセンサ部門で対応予定)。
-
----
-
-*(以下、ホールセンサ部門・トルクセンサ部門は追記予定)*
+最終提出期限は2026年8月31日 17:00です。

@@ -26,6 +26,8 @@
 
 提出条件と資料の不足状況は [docs/README.md](docs/README.md)、写真や測定結果の追加方法は [docs/evidence/README.md](docs/evidence/README.md) にまとめています。
 
+各担当の作業を時系列で確認する場合は、[匿名担当別・開発日程まとめ](docs/work-timeline-by-role.md) を参照してください。
+
 ## 現在の技術構成
 
 - 制御ボード: NUCLEO-L476RG（STM32L476RG、bxCAN内蔵）

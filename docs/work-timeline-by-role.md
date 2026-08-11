@@ -2,6 +2,13 @@
 
 この資料は、2026年度前期の授業日程、班内作業記録、Git履歴、Workbench設定スナップショットを照合し、担当A〜Dが行った作業を大まかな時系列で確認できるようにしたものである。実名との対応表はリポジトリへ登録しない。
 
+## 担当別の簡易説明
+
+- [担当A: モータ制御・モータ位置Hall・全体管理](roles/role-a-motor-control.md)
+- [担当B: 車速検出用Hallセンサ](roles/role-b-wheel-speed-hall.md)
+- [担当C: 車体整備・機械加工](roles/role-c-vehicle-mechanics.md)
+- [担当D: CAN通信モジュール](roles/role-d-can-communication.md)
+
 ## 日付の読み方
 
 | 表記 | 意味 |

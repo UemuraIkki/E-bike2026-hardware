@@ -17,6 +17,13 @@
 - [匿名担当別・開発日程まとめ](work-timeline-by-role.md): 担当A〜Dの作業を大まかな日程順に一覧化
 - [根拠資料索引](evidence/source-index.md): コード、測定、写真、回路、図面の有無を管理
 
+### 担当別の簡易説明
+
+- [担当A: モータ制御・モータ位置Hall・全体管理](roles/role-a-motor-control.md)
+- [担当B: 車速検出用Hallセンサ](roles/role-b-wheel-speed-hall.md)
+- [担当C: 車体整備・機械加工](roles/role-c-vehicle-mechanics.md)
+- [担当D: CAN通信モジュール](roles/role-d-can-communication.md)
+
 ## 使い方
 
 1. 共通部分はこのリポジトリの本文を各自のレポートへ引用・再構成する。

@@ -28,3 +28,23 @@ Release/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Local Motor Control Workbench state
+settings_wb6x.json
+.st_workbench/
+
+# Generated MCSDK projects; keep only projects/*.stwb6 and projects/README.md
+projects/*/
+
+# Private report material and unsanitized media
+private/
+report-private/
+raw-media/
+docs/evidence/raw/
+*.docx
+*.pdf
+~$*
+
+# Editor-local state
+.vscode/
+.idea/
